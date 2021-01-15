@@ -514,7 +514,7 @@ void Config::ReadControlValues() {
     Settings::values.emulate_analog_keyboard =
         ReadSetting(QStringLiteral("emulate_analog_keyboard"), false).toBool();
 
-    ReadSettingGlobal(Settings::values.use_docked_mode, QStringLiteral("use_docked_mode"), false);
+    ReadSettingGlobal(Settings::values.use_docked_mode, QStringLiteral("use_docked_mode"), true);
     ReadSettingGlobal(Settings::values.vibration_enabled, QStringLiteral("vibration_enabled"),
                       true);
     ReadSettingGlobal(Settings::values.enable_accurate_vibrations,
@@ -764,6 +764,8 @@ void Config::ReadCpuValues() {
             ReadSetting(QStringLiteral("cpuopt_unsafe_unfuse_fma"), true).toBool();
         Settings::values.cpuopt_unsafe_reduce_fp_error =
             ReadSetting(QStringLiteral("cpuopt_unsafe_reduce_fp_error"), true).toBool();
+        Settings::values.cpuopt_unsafe_inaccurate_nan =
+            ReadSetting(QStringLiteral("cpuopt_unsafe_inaccurate_nan"), true).toBool();
     }
 
     qt_config->endGroup();
@@ -1174,7 +1176,7 @@ void Config::SaveControlValues() {
     SaveTouchscreenValues();
     SaveMotionTouchValues();
 
-    WriteSettingGlobal(QStringLiteral("use_docked_mode"), Settings::values.use_docked_mode, false);
+    WriteSettingGlobal(QStringLiteral("use_docked_mode"), Settings::values.use_docked_mode, true);
     WriteSettingGlobal(QStringLiteral("vibration_enabled"), Settings::values.vibration_enabled,
                        true);
     WriteSettingGlobal(QStringLiteral("enable_accurate_vibrations"),
@@ -1327,6 +1329,8 @@ void Config::SaveCpuValues() {
                      Settings::values.cpuopt_unsafe_unfuse_fma, true);
         WriteSetting(QStringLiteral("cpuopt_unsafe_reduce_fp_error"),
                      Settings::values.cpuopt_unsafe_reduce_fp_error, true);
+        WriteSetting(QStringLiteral("cpuopt_unsafe_inaccurate_nan"),
+                     Settings::values.cpuopt_unsafe_inaccurate_nan, true);
     }
 
     qt_config->endGroup();

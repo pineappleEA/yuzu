@@ -5,6 +5,8 @@
 // This file references various implementation details from Atmosphere, an open-source firmware for
 // the Nintendo Switch. Copyright 2018-2020 Atmosphere-NX.
 
+#include <bit>
+
 #include "common/assert.h"
 #include "common/bit_util.h"
 #include "common/fiber.h"
@@ -31,12 +33,12 @@ static void IncrementScheduledCount(Kernel::Thread* thread) {
 
 void KScheduler::RescheduleCores(KernelCore& kernel, u64 cores_pending_reschedule,
                                  Core::EmuThreadHandle global_thread) {
-    u32 current_core = global_thread.host_handle;
+    const u32 current_core = global_thread.host_handle;
     bool must_context_switch = global_thread.guest_handle != InvalidHandle &&
                                (current_core < Core::Hardware::NUM_CPU_CORES);
 
     while (cores_pending_reschedule != 0) {
-        u32 core = Common::CountTrailingZeroes64(cores_pending_reschedule);
+        const auto core = static_cast<u32>(std::countr_zero(cores_pending_reschedule));
         ASSERT(core < Core::Hardware::NUM_CPU_CORES);
         if (!must_context_switch || core != current_core) {
             auto& phys_core = kernel.PhysicalCore(core);
@@ -109,7 +111,7 @@ u64 KScheduler::UpdateHighestPriorityThreadsImpl(KernelCore& kernel) {
 
     // Idle cores are bad. We're going to try to migrate threads to each idle core in turn.
     while (idle_cores != 0) {
-        u32 core_id = Common::CountTrailingZeroes64(idle_cores);
+        const auto core_id = static_cast<u32>(std::countr_zero(idle_cores));
         if (Thread* suggested = priority_queue.GetSuggestedFront(core_id); suggested != nullptr) {
             s32 migration_candidates[Core::Hardware::NUM_CPU_CORES];
             size_t num_candidates = 0;
@@ -180,22 +182,22 @@ u64 KScheduler::UpdateHighestPriorityThreadsImpl(KernelCore& kernel) {
     return cores_needing_scheduling;
 }
 
-void KScheduler::OnThreadStateChanged(KernelCore& kernel, Thread* thread, u32 old_state) {
+void KScheduler::OnThreadStateChanged(KernelCore& kernel, Thread* thread, ThreadState old_state) {
     ASSERT(kernel.GlobalSchedulerContext().IsLocked());
 
     // Check if the state has changed, because if it hasn't there's nothing to do.
-    const auto cur_state = thread->scheduling_state;
+    const auto cur_state = thread->GetRawState();
     if (cur_state == old_state) {
         return;
     }
 
     // Update the priority queues.
-    if (old_state == static_cast<u32>(ThreadSchedStatus::Runnable)) {
+    if (old_state == ThreadState::Runnable) {
         // If we were previously runnable, then we're not runnable now, and we should remove.
         GetPriorityQueue(kernel).Remove(thread);
         IncrementScheduledCount(thread);
         SetSchedulerUpdateNeeded(kernel);
-    } else if (cur_state == static_cast<u32>(ThreadSchedStatus::Runnable)) {
+    } else if (cur_state == ThreadState::Runnable) {
         // If we're now runnable, then we weren't previously, and we should add.
         GetPriorityQueue(kernel).PushBack(thread);
         IncrementScheduledCount(thread);
@@ -203,13 +205,11 @@ void KScheduler::OnThreadStateChanged(KernelCore& kernel, Thread* thread, u32 ol
     }
 }
 
-void KScheduler::OnThreadPriorityChanged(KernelCore& kernel, Thread* thread, Thread* current_thread,
-                                         u32 old_priority) {
-
+void KScheduler::OnThreadPriorityChanged(KernelCore& kernel, Thread* thread, s32 old_priority) {
     ASSERT(kernel.GlobalSchedulerContext().IsLocked());
 
     // If the thread is runnable, we want to change its priority in the queue.
-    if (thread->scheduling_state == static_cast<u32>(ThreadSchedStatus::Runnable)) {
+    if (thread->GetRawState() == ThreadState::Runnable) {
         GetPriorityQueue(kernel).ChangePriority(
             old_priority, thread == kernel.CurrentScheduler()->GetCurrentThread(), thread);
         IncrementScheduledCount(thread);
@@ -222,7 +222,7 @@ void KScheduler::OnThreadAffinityMaskChanged(KernelCore& kernel, Thread* thread,
     ASSERT(kernel.GlobalSchedulerContext().IsLocked());
 
     // If the thread is runnable, we want to change its affinity in the queue.
-    if (thread->scheduling_state == static_cast<u32>(ThreadSchedStatus::Runnable)) {
+    if (thread->GetRawState() == ThreadState::Runnable) {
         GetPriorityQueue(kernel).ChangeAffinityMask(old_core, old_affinity, thread);
         IncrementScheduledCount(thread);
         SetSchedulerUpdateNeeded(kernel);
@@ -292,7 +292,7 @@ void KScheduler::RotateScheduledQueue(s32 core_id, s32 priority) {
 
         // If the best thread we can choose has a priority the same or worse than ours, try to
         // migrate a higher priority thread.
-        if (best_thread != nullptr && best_thread->GetPriority() >= static_cast<u32>(priority)) {
+        if (best_thread != nullptr && best_thread->GetPriority() >= priority) {
             Thread* suggested = priority_queue.GetSuggestedFront(core_id);
             while (suggested != nullptr) {
                 // If the suggestion's priority is the same as ours, don't bother.
@@ -395,8 +395,8 @@ void KScheduler::YieldWithoutCoreMigration() {
     {
         KScopedSchedulerLock lock(kernel);
 
-        const auto cur_state = cur_thread.scheduling_state;
-        if (cur_state == static_cast<u32>(ThreadSchedStatus::Runnable)) {
+        const auto cur_state = cur_thread.GetRawState();
+        if (cur_state == ThreadState::Runnable) {
             // Put the current thread at the back of the queue.
             Thread* next_thread = priority_queue.MoveToScheduledBack(std::addressof(cur_thread));
             IncrementScheduledCount(std::addressof(cur_thread));
@@ -436,8 +436,8 @@ void KScheduler::YieldWithCoreMigration() {
     {
         KScopedSchedulerLock lock(kernel);
 
-        const auto cur_state = cur_thread.scheduling_state;
-        if (cur_state == static_cast<u32>(ThreadSchedStatus::Runnable)) {
+        const auto cur_state = cur_thread.GetRawState();
+        if (cur_state == ThreadState::Runnable) {
             // Get the current active core.
             const s32 core_id = cur_thread.GetActiveCore();
 
@@ -526,8 +526,8 @@ void KScheduler::YieldToAnyThread() {
     {
         KScopedSchedulerLock lock(kernel);
 
-        const auto cur_state = cur_thread.scheduling_state;
-        if (cur_state == static_cast<u32>(ThreadSchedStatus::Runnable)) {
+        const auto cur_state = cur_thread.GetRawState();
+        if (cur_state == ThreadState::Runnable) {
             // Get the current active core.
             const s32 core_id = cur_thread.GetActiveCore();
 
@@ -645,8 +645,7 @@ void KScheduler::Unload(Thread* thread) {
 
 void KScheduler::Reload(Thread* thread) {
     if (thread) {
-        ASSERT_MSG(thread->GetSchedulingStatus() == ThreadSchedStatus::Runnable,
-                   "Thread must be runnable.");
+        ASSERT_MSG(thread->GetState() == ThreadState::Runnable, "Thread must be runnable.");
 
         // Cancel any outstanding wakeup events for this thread
         thread->SetIsRunning(true);
@@ -725,7 +724,7 @@ void KScheduler::SwitchToCurrent() {
         do {
             if (current_thread != nullptr && !current_thread->IsHLEThread()) {
                 current_thread->context_guard.lock();
-                if (!current_thread->IsRunnable()) {
+                if (current_thread->GetRawState() != ThreadState::Runnable) {
                     current_thread->context_guard.unlock();
                     break;
                 }
@@ -772,7 +771,7 @@ void KScheduler::Initialize() {
 
     {
         KScopedSchedulerLock lock{system.Kernel()};
-        idle_thread->SetStatus(ThreadStatus::Ready);
+        idle_thread->SetState(ThreadState::Runnable);
     }
 }
 

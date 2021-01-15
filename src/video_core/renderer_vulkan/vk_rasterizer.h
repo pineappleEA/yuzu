@@ -29,8 +29,8 @@
 #include "video_core/renderer_vulkan/vk_stream_buffer.h"
 #include "video_core/renderer_vulkan/vk_texture_cache.h"
 #include "video_core/renderer_vulkan/vk_update_descriptor.h"
-#include "video_core/renderer_vulkan/wrapper.h"
 #include "video_core/shader/async_shaders.h"
+#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Core {
 class System;
@@ -55,7 +55,7 @@ class RasterizerVulkan final : public VideoCore::RasterizerAccelerated {
 public:
     explicit RasterizerVulkan(Core::Frontend::EmuWindow& emu_window_, Tegra::GPU& gpu_,
                               Tegra::MemoryManager& gpu_memory_, Core::Memory::Memory& cpu_memory_,
-                              VKScreenInfo& screen_info_, const VKDevice& device_,
+                              VKScreenInfo& screen_info_, const Device& device_,
                               VKMemoryManager& memory_manager_, StateTracker& state_tracker_,
                               VKScheduler& scheduler_);
     ~RasterizerVulkan() override;
@@ -212,7 +212,7 @@ private:
     Tegra::Engines::KeplerCompute& kepler_compute;
 
     VKScreenInfo& screen_info;
-    const VKDevice& device;
+    const Device& device;
     VKMemoryManager& memory_manager;
     StateTracker& state_tracker;
     VKScheduler& scheduler;

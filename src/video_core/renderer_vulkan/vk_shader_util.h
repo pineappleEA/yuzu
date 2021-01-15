@@ -7,12 +7,12 @@
 #include <span>
 
 #include "common/common_types.h"
-#include "video_core/renderer_vulkan/wrapper.h"
+#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Vulkan {
 
-class VKDevice;
+class Device;
 
-vk::ShaderModule BuildShader(const VKDevice& device, std::span<const u32> code);
+vk::ShaderModule BuildShader(const Device& device, std::span<const u32> code);
 
 } // namespace Vulkan

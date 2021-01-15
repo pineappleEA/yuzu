@@ -7,17 +7,17 @@
 #include "common/common_types.h"
 #include "video_core/renderer_vulkan/vk_descriptor_pool.h"
 #include "video_core/renderer_vulkan/vk_shader_decompiler.h"
-#include "video_core/renderer_vulkan/wrapper.h"
+#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Vulkan {
 
-class VKDevice;
+class Device;
 class VKScheduler;
 class VKUpdateDescriptorQueue;
 
 class VKComputePipeline final {
 public:
-    explicit VKComputePipeline(const VKDevice& device_, VKScheduler& scheduler_,
+    explicit VKComputePipeline(const Device& device_, VKScheduler& scheduler_,
                                VKDescriptorPool& descriptor_pool_,
                                VKUpdateDescriptorQueue& update_descriptor_queue_,
                                const SPIRVShader& shader_);
@@ -48,7 +48,7 @@ private:
 
     vk::Pipeline CreatePipeline() const;
 
-    const VKDevice& device;
+    const Device& device;
     VKScheduler& scheduler;
     ShaderEntries entries;
 

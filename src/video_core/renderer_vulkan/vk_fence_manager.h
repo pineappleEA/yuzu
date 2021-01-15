@@ -9,7 +9,7 @@
 #include "video_core/fence_manager.h"
 #include "video_core/renderer_vulkan/vk_buffer_cache.h"
 #include "video_core/renderer_vulkan/vk_texture_cache.h"
-#include "video_core/renderer_vulkan/wrapper.h"
+#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Core {
 class System;
@@ -21,17 +21,15 @@ class RasterizerInterface;
 
 namespace Vulkan {
 
+class Device;
 class VKBufferCache;
-class VKDevice;
 class VKQueryCache;
 class VKScheduler;
 
 class InnerFence : public VideoCommon::FenceBase {
 public:
-    explicit InnerFence(const VKDevice& device_, VKScheduler& scheduler_, u32 payload_,
-                        bool is_stubbed_);
-    explicit InnerFence(const VKDevice& device_, VKScheduler& scheduler_, GPUVAddr address_,
-                        u32 payload_, bool is_stubbed_);
+    explicit InnerFence(VKScheduler& scheduler_, u32 payload_, bool is_stubbed_);
+    explicit InnerFence(VKScheduler& scheduler_, GPUVAddr address_, u32 payload_, bool is_stubbed_);
     ~InnerFence();
 
     void Queue();
@@ -41,12 +39,8 @@ public:
     void Wait();
 
 private:
-    bool IsEventSignalled() const;
-
-    const VKDevice& device;
     VKScheduler& scheduler;
-    vk::Event event;
-    u64 ticks = 0;
+    u64 wait_tick = 0;
 };
 using Fence = std::shared_ptr<InnerFence>;
 
@@ -58,7 +52,7 @@ public:
     explicit VKFenceManager(VideoCore::RasterizerInterface& rasterizer_, Tegra::GPU& gpu_,
                             Tegra::MemoryManager& memory_manager_, TextureCache& texture_cache_,
                             VKBufferCache& buffer_cache_, VKQueryCache& query_cache_,
-                            const VKDevice& device_, VKScheduler& scheduler_);
+                            VKScheduler& scheduler_);
 
 protected:
     Fence CreateFence(u32 value, bool is_stubbed) override;
@@ -68,7 +62,6 @@ protected:
     void WaitFence(Fence& fence) override;
 
 private:
-    const VKDevice& device;
     VKScheduler& scheduler;
 };
 

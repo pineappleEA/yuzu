@@ -10,10 +10,11 @@
 #include <vector>
 
 #include "common/common_types.h"
-#include "video_core/renderer_vulkan/nsight_aftermath_tracker.h"
-#include "video_core/renderer_vulkan/wrapper.h"
+#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Vulkan {
+
+class NsightAftermathTracker;
 
 /// Format usage descriptor.
 enum class FormatType { Linear, Optimal, Buffer };
@@ -22,14 +23,11 @@ enum class FormatType { Linear, Optimal, Buffer };
 const u32 GuestWarpSize = 32;
 
 /// Handles data specific to a physical device.
-class VKDevice final {
+class Device final {
 public:
-    explicit VKDevice(VkInstance instance, u32 instance_version, vk::PhysicalDevice physical,
-                      VkSurfaceKHR surface, const vk::InstanceDispatch& dld);
-    ~VKDevice();
-
-    /// Initializes the device. Returns true on success.
-    bool Create();
+    explicit Device(VkInstance instance, vk::PhysicalDevice physical, VkSurfaceKHR surface,
+                    const vk::InstanceDispatch& dld);
+    ~Device();
 
     /**
      * Returns a format supported by the device for the passed requeriments.
@@ -80,11 +78,6 @@ public:
     /// Returns main present queue family index.
     u32 GetPresentFamily() const {
         return present_family;
-    }
-
-    /// Returns the current instance Vulkan API version in Vulkan-formatted version numbers.
-    u32 InstanceApiVersion() const {
-        return instance_version;
     }
 
     /// Returns the current Vulkan API version provided in Vulkan-formatted version numbers.
@@ -232,10 +225,10 @@ public:
         return use_asynchronous_shaders;
     }
 
-    /// Checks if the physical device is suitable.
-    static bool IsSuitable(vk::PhysicalDevice physical, VkSurfaceKHR surface);
-
 private:
+    /// Checks if the physical device is suitable.
+    void CheckSuitability() const;
+
     /// Loads extensions into a vector and stores available ones in this object.
     std::vector<const char*> LoadExtensions();
 
@@ -279,23 +272,24 @@ private:
     bool is_optimal_astc_supported{};       ///< Support for native ASTC.
     bool is_float16_supported{};            ///< Support for float16 arithmetics.
     bool is_warp_potentially_bigger{};      ///< Host warp size can be bigger than guest.
-    bool is_formatless_image_load_supported{}; ///< Support for shader image read without format.
-    bool is_blit_depth_stencil_supported{};    ///< Support for blitting from and to depth stencil.
-    bool nv_viewport_swizzle{};                ///< Support for VK_NV_viewport_swizzle.
-    bool khr_uniform_buffer_standard_layout{}; ///< Support for std430 on UBOs.
-    bool ext_index_type_uint8{};               ///< Support for VK_EXT_index_type_uint8.
-    bool ext_sampler_filter_minmax{};          ///< Support for VK_EXT_sampler_filter_minmax.
-    bool ext_depth_range_unrestricted{};       ///< Support for VK_EXT_depth_range_unrestricted.
-    bool ext_shader_viewport_index_layer{};    ///< Support for VK_EXT_shader_viewport_index_layer.
-    bool ext_tooling_info{};                   ///< Support for VK_EXT_tooling_info.
-    bool ext_transform_feedback{};             ///< Support for VK_EXT_transform_feedback.
-    bool ext_custom_border_color{};            ///< Support for VK_EXT_custom_border_color.
-    bool ext_extended_dynamic_state{};         ///< Support for VK_EXT_extended_dynamic_state.
-    bool ext_robustness2{};                    ///< Support for VK_EXT_robustness2.
-    bool ext_shader_stencil_export{};          ///< Support for VK_EXT_shader_stencil_export.
-    bool nv_device_diagnostics_config{};       ///< Support for VK_NV_device_diagnostics_config.
-    bool has_renderdoc{};                      ///< Has RenderDoc attached
-    bool has_nsight_graphics{};                ///< Has Nsight Graphics attached
+    bool is_formatless_image_load_supported{};  ///< Support for shader image read without format.
+    bool is_shader_storage_image_multisample{}; ///< Support for image operations on MSAA images.
+    bool is_blit_depth_stencil_supported{};     ///< Support for blitting from and to depth stencil.
+    bool nv_viewport_swizzle{};                 ///< Support for VK_NV_viewport_swizzle.
+    bool khr_uniform_buffer_standard_layout{};  ///< Support for std430 on UBOs.
+    bool ext_index_type_uint8{};                ///< Support for VK_EXT_index_type_uint8.
+    bool ext_sampler_filter_minmax{};           ///< Support for VK_EXT_sampler_filter_minmax.
+    bool ext_depth_range_unrestricted{};        ///< Support for VK_EXT_depth_range_unrestricted.
+    bool ext_shader_viewport_index_layer{};     ///< Support for VK_EXT_shader_viewport_index_layer.
+    bool ext_tooling_info{};                    ///< Support for VK_EXT_tooling_info.
+    bool ext_transform_feedback{};              ///< Support for VK_EXT_transform_feedback.
+    bool ext_custom_border_color{};             ///< Support for VK_EXT_custom_border_color.
+    bool ext_extended_dynamic_state{};          ///< Support for VK_EXT_extended_dynamic_state.
+    bool ext_robustness2{};                     ///< Support for VK_EXT_robustness2.
+    bool ext_shader_stencil_export{};           ///< Support for VK_EXT_shader_stencil_export.
+    bool nv_device_diagnostics_config{};        ///< Support for VK_NV_device_diagnostics_config.
+    bool has_renderdoc{};                       ///< Has RenderDoc attached
+    bool has_nsight_graphics{};                 ///< Has Nsight Graphics attached
 
     // Asynchronous Graphics Pipeline setting
     bool use_asynchronous_shaders{}; ///< Setting to use asynchronous shaders/graphics pipeline
@@ -308,7 +302,7 @@ private:
     std::unordered_map<VkFormat, VkFormatProperties> format_properties;
 
     /// Nsight Aftermath GPU crash tracker
-    NsightAftermathTracker nsight_aftermath_tracker;
+    std::unique_ptr<NsightAftermathTracker> nsight_aftermath_tracker;
 };
 
 } // namespace Vulkan

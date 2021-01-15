@@ -9,17 +9,17 @@
 #include <vector>
 
 #include "common/common_types.h"
-#include "video_core/renderer_vulkan/wrapper.h"
+#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Vulkan {
 
-class VKDevice;
+class Device;
 class VKFenceWatch;
 class VKScheduler;
 
 class VKStreamBuffer final {
 public:
-    explicit VKStreamBuffer(const VKDevice& device, VKScheduler& scheduler);
+    explicit VKStreamBuffer(const Device& device, VKScheduler& scheduler);
     ~VKStreamBuffer();
 
     /**
@@ -54,7 +54,7 @@ private:
 
     void WaitPendingOperations(u64 requested_upper_bound);
 
-    const VKDevice& device; ///< Vulkan device manager.
+    const Device& device;   ///< Vulkan device manager.
     VKScheduler& scheduler; ///< Command scheduler.
 
     vk::Buffer buffer;        ///< Mapped buffer.

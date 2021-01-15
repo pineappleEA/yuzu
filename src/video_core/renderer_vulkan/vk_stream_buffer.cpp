@@ -10,10 +10,10 @@
 
 #include "common/alignment.h"
 #include "common/assert.h"
-#include "video_core/renderer_vulkan/vk_device.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
 #include "video_core/renderer_vulkan/vk_stream_buffer.h"
-#include "video_core/renderer_vulkan/wrapper.h"
+#include "video_core/vulkan_common/vulkan_device.h"
+#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Vulkan {
 
@@ -60,7 +60,7 @@ u32 GetMemoryType(const VkPhysicalDeviceMemoryProperties& properties,
 
 } // Anonymous namespace
 
-VKStreamBuffer::VKStreamBuffer(const VKDevice& device_, VKScheduler& scheduler_)
+VKStreamBuffer::VKStreamBuffer(const Device& device_, VKScheduler& scheduler_)
     : device{device_}, scheduler{scheduler_} {
     CreateBuffers();
     ReserveWatches(current_watches, WATCHES_INITIAL_RESERVE);

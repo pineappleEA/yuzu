@@ -5,8 +5,8 @@
 #include <cstddef>
 
 #include "video_core/renderer_vulkan/vk_command_pool.h"
-#include "video_core/renderer_vulkan/vk_device.h"
-#include "video_core/renderer_vulkan/wrapper.h"
+#include "video_core/vulkan_common/vulkan_device.h"
+#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Vulkan {
 
@@ -17,7 +17,7 @@ struct CommandPool::Pool {
     vk::CommandBuffers cmdbufs;
 };
 
-CommandPool::CommandPool(MasterSemaphore& master_semaphore_, const VKDevice& device_)
+CommandPool::CommandPool(MasterSemaphore& master_semaphore_, const Device& device_)
     : ResourcePool(master_semaphore_, COMMAND_BUFFER_POOL_SIZE), device{device_} {}
 
 CommandPool::~CommandPool() = default;

@@ -20,12 +20,12 @@
 #include "video_core/renderer_vulkan/fixed_pipeline_state.h"
 #include "video_core/renderer_vulkan/vk_graphics_pipeline.h"
 #include "video_core/renderer_vulkan/vk_shader_decompiler.h"
-#include "video_core/renderer_vulkan/wrapper.h"
 #include "video_core/shader/async_shaders.h"
 #include "video_core/shader/memory_util.h"
 #include "video_core/shader/registry.h"
 #include "video_core/shader/shader_ir.h"
 #include "video_core/shader_cache.h"
+#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Core {
 class System;
@@ -33,10 +33,10 @@ class System;
 
 namespace Vulkan {
 
+class Device;
 class RasterizerVulkan;
 class VKComputePipeline;
 class VKDescriptorPool;
-class VKDevice;
 class VKScheduler;
 class VKUpdateDescriptorQueue;
 
@@ -121,7 +121,7 @@ public:
     explicit VKPipelineCache(RasterizerVulkan& rasterizer, Tegra::GPU& gpu,
                              Tegra::Engines::Maxwell3D& maxwell3d,
                              Tegra::Engines::KeplerCompute& kepler_compute,
-                             Tegra::MemoryManager& gpu_memory, const VKDevice& device,
+                             Tegra::MemoryManager& gpu_memory, const Device& device,
                              VKScheduler& scheduler, VKDescriptorPool& descriptor_pool,
                              VKUpdateDescriptorQueue& update_descriptor_queue);
     ~VKPipelineCache() override;
@@ -148,7 +148,7 @@ private:
     Tegra::Engines::KeplerCompute& kepler_compute;
     Tegra::MemoryManager& gpu_memory;
 
-    const VKDevice& device;
+    const Device& device;
     VKScheduler& scheduler;
     VKDescriptorPool& descriptor_pool;
     VKUpdateDescriptorQueue& update_descriptor_queue;

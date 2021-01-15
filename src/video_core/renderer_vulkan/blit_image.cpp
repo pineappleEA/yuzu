@@ -11,14 +11,14 @@
 #include "video_core/host_shaders/vulkan_blit_depth_stencil_frag_spv.h"
 #include "video_core/renderer_vulkan/blit_image.h"
 #include "video_core/renderer_vulkan/maxwell_to_vk.h"
-#include "video_core/renderer_vulkan/vk_device.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
 #include "video_core/renderer_vulkan/vk_shader_util.h"
 #include "video_core/renderer_vulkan/vk_state_tracker.h"
 #include "video_core/renderer_vulkan/vk_texture_cache.h"
 #include "video_core/renderer_vulkan/vk_update_descriptor.h"
-#include "video_core/renderer_vulkan/wrapper.h"
 #include "video_core/surface.h"
+#include "video_core/vulkan_common/vulkan_device.h"
+#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Vulkan {
 
@@ -225,7 +225,7 @@ constexpr std::array<VkPipelineShaderStageCreateInfo, 2> MakeStages(
     };
 }
 
-void UpdateOneTextureDescriptorSet(const VKDevice& device, VkDescriptorSet descriptor_set,
+void UpdateOneTextureDescriptorSet(const Device& device, VkDescriptorSet descriptor_set,
                                    VkSampler sampler, VkImageView image_view) {
     const VkDescriptorImageInfo image_info{
         .sampler = sampler,
@@ -247,7 +247,7 @@ void UpdateOneTextureDescriptorSet(const VKDevice& device, VkDescriptorSet descr
     device.GetLogical().UpdateDescriptorSets(write_descriptor_set, nullptr);
 }
 
-void UpdateTwoTexturesDescriptorSet(const VKDevice& device, VkDescriptorSet descriptor_set,
+void UpdateTwoTexturesDescriptorSet(const Device& device, VkDescriptorSet descriptor_set,
                                     VkSampler sampler, VkImageView image_view_0,
                                     VkImageView image_view_1) {
     const VkDescriptorImageInfo image_info_0{
@@ -326,7 +326,7 @@ void BindBlitState(vk::CommandBuffer cmdbuf, VkPipelineLayout layout,
 
 } // Anonymous namespace
 
-BlitImageHelper::BlitImageHelper(const VKDevice& device_, VKScheduler& scheduler_,
+BlitImageHelper::BlitImageHelper(const Device& device_, VKScheduler& scheduler_,
                                  StateTracker& state_tracker_, VKDescriptorPool& descriptor_pool)
     : device{device_}, scheduler{scheduler_}, state_tracker{state_tracker_},
       one_texture_set_layout(device.GetLogical().CreateDescriptorSetLayout(

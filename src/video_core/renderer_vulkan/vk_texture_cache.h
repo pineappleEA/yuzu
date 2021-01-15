@@ -8,8 +8,8 @@
 #include <span>
 
 #include "video_core/renderer_vulkan/vk_memory_manager.h"
-#include "video_core/renderer_vulkan/wrapper.h"
 #include "video_core/texture_cache/texture_cache.h"
+#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Vulkan {
 
@@ -19,11 +19,11 @@ using VideoCommon::Offset2D;
 using VideoCommon::RenderTargets;
 using VideoCore::Surface::PixelFormat;
 
-class VKDevice;
 class VKScheduler;
 class VKStagingBufferPool;
 
 class BlitImageHelper;
+class Device;
 class Image;
 class ImageView;
 class Framebuffer;
@@ -68,7 +68,7 @@ struct ImageBufferMap {
 };
 
 struct TextureCacheRuntime {
-    const VKDevice& device;
+    const Device& device;
     VKScheduler& scheduler;
     VKMemoryManager& memory_manager;
     VKStagingBufferPool& staging_buffer_pool;
@@ -104,6 +104,11 @@ struct TextureCacheRuntime {
     }
 
     void InsertUploadMemoryBarrier() {}
+
+    bool HasBrokenTextureViewFormats() const noexcept {
+        // No known Vulkan driver has broken image views
+        return false;
+    }
 };
 
 class Image : public VideoCommon::ImageBase {
@@ -177,7 +182,7 @@ public:
 private:
     [[nodiscard]] vk::ImageView MakeDepthStencilView(VkImageAspectFlags aspect_mask);
 
-    const VKDevice* device = nullptr;
+    const Device* device = nullptr;
     std::array<vk::ImageView, VideoCommon::NUM_IMAGE_VIEW_TYPES> image_views;
     vk::ImageView depth_view;
     vk::ImageView stencil_view;

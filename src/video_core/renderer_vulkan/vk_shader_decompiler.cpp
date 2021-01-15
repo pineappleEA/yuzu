@@ -22,11 +22,11 @@
 #include "video_core/engines/shader_bytecode.h"
 #include "video_core/engines/shader_header.h"
 #include "video_core/engines/shader_type.h"
-#include "video_core/renderer_vulkan/vk_device.h"
 #include "video_core/renderer_vulkan/vk_shader_decompiler.h"
 #include "video_core/shader/node.h"
 #include "video_core/shader/shader_ir.h"
 #include "video_core/shader/transform_feedback.h"
+#include "video_core/vulkan_common/vulkan_device.h"
 
 namespace Vulkan {
 
@@ -272,19 +272,12 @@ bool IsPrecise(Operation operand) {
     return false;
 }
 
-u32 ShaderVersion(const VKDevice& device) {
-    if (device.InstanceApiVersion() < VK_API_VERSION_1_1) {
-        return 0x00010000;
-    }
-    return 0x00010300;
-}
-
 class SPIRVDecompiler final : public Sirit::Module {
 public:
-    explicit SPIRVDecompiler(const VKDevice& device_, const ShaderIR& ir_, ShaderType stage_,
+    explicit SPIRVDecompiler(const Device& device_, const ShaderIR& ir_, ShaderType stage_,
                              const Registry& registry_, const Specialization& specialization_)
-        : Module(ShaderVersion(device_)), device{device_}, ir{ir_}, stage{stage_},
-          header{ir_.GetHeader()}, registry{registry_}, specialization{specialization_} {
+        : Module(0x00010300), device{device_}, ir{ir_}, stage{stage_}, header{ir_.GetHeader()},
+          registry{registry_}, specialization{specialization_} {
         if (stage_ != ShaderType::Compute) {
             transform_feedback = BuildTransformFeedback(registry_.GetGraphicsInfo());
         }
@@ -2749,7 +2742,7 @@ private:
     };
     static_assert(operation_decompilers.size() == static_cast<std::size_t>(OperationCode::Amount));
 
-    const VKDevice& device;
+    const Device& device;
     const ShaderIR& ir;
     const ShaderType stage;
     const Tegra::Shader::Header header;
@@ -3137,7 +3130,7 @@ ShaderEntries GenerateShaderEntries(const VideoCommon::Shader::ShaderIR& ir) {
     return entries;
 }
 
-std::vector<u32> Decompile(const VKDevice& device, const VideoCommon::Shader::ShaderIR& ir,
+std::vector<u32> Decompile(const Device& device, const VideoCommon::Shader::ShaderIR& ir,
                            ShaderType stage, const VideoCommon::Shader::Registry& registry,
                            const Specialization& specialization) {
     return SPIRVDecompiler(device, ir, stage, registry, specialization).Assemble();

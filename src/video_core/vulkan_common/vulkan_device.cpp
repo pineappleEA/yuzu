@@ -13,8 +13,9 @@
 
 #include "common/assert.h"
 #include "core/settings.h"
-#include "video_core/renderer_vulkan/vk_device.h"
-#include "video_core/renderer_vulkan/wrapper.h"
+#include "video_core/vulkan_common/nsight_aftermath_tracker.h"
+#include "video_core/vulkan_common/vulkan_device.h"
+#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Vulkan {
 
@@ -98,8 +99,7 @@ VkFormatFeatureFlags GetFormatFeatures(VkFormatProperties properties, FormatType
     });
 }
 
-std::unordered_map<VkFormat, VkFormatProperties> GetFormatProperties(
-    vk::PhysicalDevice physical, const vk::InstanceDispatch& dld) {
+std::unordered_map<VkFormat, VkFormatProperties> GetFormatProperties(vk::PhysicalDevice physical) {
     static constexpr std::array formats{
         VK_FORMAT_A8B8G8R8_UNORM_PACK32,
         VK_FORMAT_A8B8G8R8_UINT_PACK32,
@@ -206,23 +206,21 @@ std::unordered_map<VkFormat, VkFormatProperties> GetFormatProperties(
 
 } // Anonymous namespace
 
-VKDevice::VKDevice(VkInstance instance_, u32 instance_version_, vk::PhysicalDevice physical_,
-                   VkSurfaceKHR surface, const vk::InstanceDispatch& dld_)
+Device::Device(VkInstance instance_, vk::PhysicalDevice physical_, VkSurfaceKHR surface,
+               const vk::InstanceDispatch& dld_)
     : instance{instance_}, dld{dld_}, physical{physical_}, properties{physical.GetProperties()},
-      instance_version{instance_version_}, format_properties{GetFormatProperties(physical, dld)} {
+      format_properties{GetFormatProperties(physical)} {
+    CheckSuitability();
     SetupFamilies(surface);
     SetupFeatures();
-}
 
-VKDevice::~VKDevice() = default;
-
-bool VKDevice::Create() {
     const auto queue_cis = GetDeviceQueueCreateInfos();
     const std::vector extensions = LoadExtensions();
 
     VkPhysicalDeviceFeatures2 features2{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
         .pNext = nullptr,
+        .features{},
     };
     const void* first_next = &features2;
     void** next = &features2.pNext;
@@ -258,7 +256,7 @@ bool VKDevice::Create() {
         .shaderTessellationAndGeometryPointSize = false,
         .shaderImageGatherExtended = true,
         .shaderStorageImageExtendedFormats = false,
-        .shaderStorageImageMultisample = true,
+        .shaderStorageImageMultisample = is_shader_storage_image_multisample,
         .shaderStorageImageReadWithoutFormat = is_formatless_image_load_supported,
         .shaderStorageImageWriteWithoutFormat = true,
         .shaderUniformBufferArrayDynamicIndexing = false,
@@ -312,6 +310,7 @@ bool VKDevice::Create() {
 
     VkPhysicalDeviceHostQueryResetFeaturesEXT host_query_reset{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT,
+        .pNext = nullptr,
         .hostQueryReset = true,
     };
     SetNext(next, host_query_reset);
@@ -415,7 +414,7 @@ bool VKDevice::Create() {
 
     VkDeviceDiagnosticsConfigCreateInfoNV diagnostics_nv;
     if (nv_device_diagnostics_config) {
-        nsight_aftermath_tracker.Initialize();
+        nsight_aftermath_tracker = std::make_unique<NsightAftermathTracker>();
 
         diagnostics_nv = {
             .sType = VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV,
@@ -426,12 +425,7 @@ bool VKDevice::Create() {
         };
         first_next = &diagnostics_nv;
     }
-
     logical = vk::Device::Create(physical, queue_cis, extensions, first_next, dld);
-    if (!logical) {
-        LOG_ERROR(Render_Vulkan, "Failed to create logical device");
-        return false;
-    }
 
     CollectTelemetryParameters();
     CollectToolingInfo();
@@ -455,11 +449,12 @@ bool VKDevice::Create() {
     present_queue = logical.GetQueue(present_family);
 
     use_asynchronous_shaders = Settings::values.use_asynchronous_shaders.GetValue();
-    return true;
 }
 
-VkFormat VKDevice::GetSupportedFormat(VkFormat wanted_format, VkFormatFeatureFlags wanted_usage,
-                                      FormatType format_type) const {
+Device::~Device() = default;
+
+VkFormat Device::GetSupportedFormat(VkFormat wanted_format, VkFormatFeatureFlags wanted_usage,
+                                    FormatType format_type) const {
     if (IsFormatSupported(wanted_format, wanted_usage, format_type)) {
         return wanted_format;
     }
@@ -490,18 +485,20 @@ VkFormat VKDevice::GetSupportedFormat(VkFormat wanted_format, VkFormatFeatureFla
     return wanted_format;
 }
 
-void VKDevice::ReportLoss() const {
+void Device::ReportLoss() const {
     LOG_CRITICAL(Render_Vulkan, "Device loss occured!");
 
     // Wait for the log to flush and for Nsight Aftermath to dump the results
     std::this_thread::sleep_for(std::chrono::seconds{15});
 }
 
-void VKDevice::SaveShader(const std::vector<u32>& spirv) const {
-    nsight_aftermath_tracker.SaveShader(spirv);
+void Device::SaveShader(const std::vector<u32>& spirv) const {
+    if (nsight_aftermath_tracker) {
+        nsight_aftermath_tracker->SaveShader(spirv);
+    }
 }
 
-bool VKDevice::IsOptimalAstcSupported(const VkPhysicalDeviceFeatures& features) const {
+bool Device::IsOptimalAstcSupported(const VkPhysicalDeviceFeatures& features) const {
     // Disable for now to avoid converting ASTC twice.
     static constexpr std::array astc_formats = {
         VK_FORMAT_ASTC_4x4_UNORM_BLOCK,   VK_FORMAT_ASTC_4x4_SRGB_BLOCK,
@@ -535,7 +532,7 @@ bool VKDevice::IsOptimalAstcSupported(const VkPhysicalDeviceFeatures& features) 
     return true;
 }
 
-bool VKDevice::TestDepthStencilBlits() const {
+bool Device::TestDepthStencilBlits() const {
     static constexpr VkFormatFeatureFlags required_features =
         VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT;
     const auto test_features = [](VkFormatProperties props) {
@@ -545,8 +542,8 @@ bool VKDevice::TestDepthStencilBlits() const {
            test_features(format_properties.at(VK_FORMAT_D24_UNORM_S8_UINT));
 }
 
-bool VKDevice::IsFormatSupported(VkFormat wanted_format, VkFormatFeatureFlags wanted_usage,
-                                 FormatType format_type) const {
+bool Device::IsFormatSupported(VkFormat wanted_format, VkFormatFeatureFlags wanted_usage,
+                               FormatType format_type) const {
     const auto it = format_properties.find(wanted_format);
     if (it == format_properties.end()) {
         UNIMPLEMENTED_MSG("Unimplemented format query={}", wanted_format);
@@ -556,64 +553,45 @@ bool VKDevice::IsFormatSupported(VkFormat wanted_format, VkFormatFeatureFlags wa
     return (supported_usage & wanted_usage) == wanted_usage;
 }
 
-bool VKDevice::IsSuitable(vk::PhysicalDevice physical, VkSurfaceKHR surface) {
-    bool is_suitable = true;
+void Device::CheckSuitability() const {
     std::bitset<REQUIRED_EXTENSIONS.size()> available_extensions;
-
-    for (const auto& prop : physical.EnumerateDeviceExtensionProperties()) {
+    for (const VkExtensionProperties& property : physical.EnumerateDeviceExtensionProperties()) {
         for (std::size_t i = 0; i < REQUIRED_EXTENSIONS.size(); ++i) {
             if (available_extensions[i]) {
                 continue;
             }
-            const std::string_view name{prop.extensionName};
+            const std::string_view name{property.extensionName};
             available_extensions[i] = name == REQUIRED_EXTENSIONS[i];
         }
     }
-    if (!available_extensions.all()) {
-        for (std::size_t i = 0; i < REQUIRED_EXTENSIONS.size(); ++i) {
-            if (available_extensions[i]) {
-                continue;
-            }
-            LOG_ERROR(Render_Vulkan, "Missing required extension: {}", REQUIRED_EXTENSIONS[i]);
-            is_suitable = false;
-        }
-    }
-
-    bool has_graphics{}, has_present{};
-    const std::vector queue_family_properties = physical.GetQueueFamilyProperties();
-    for (u32 i = 0; i < static_cast<u32>(queue_family_properties.size()); ++i) {
-        const auto& family = queue_family_properties[i];
-        if (family.queueCount == 0) {
+    for (size_t i = 0; i < REQUIRED_EXTENSIONS.size(); ++i) {
+        if (available_extensions[i]) {
             continue;
         }
-        has_graphics |= family.queueFlags & VK_QUEUE_GRAPHICS_BIT;
-        has_present |= physical.GetSurfaceSupportKHR(i, surface);
+        LOG_ERROR(Render_Vulkan, "Missing required extension: {}", REQUIRED_EXTENSIONS[i]);
+        throw vk::Exception(VK_ERROR_EXTENSION_NOT_PRESENT);
     }
-    if (!has_graphics || !has_present) {
-        LOG_ERROR(Render_Vulkan, "Device lacks a graphics and present queue");
-        is_suitable = false;
+    struct LimitTuple {
+        u32 minimum;
+        u32 value;
+        const char* name;
+    };
+    const VkPhysicalDeviceLimits& limits{properties.limits};
+    const std::array limits_report{
+        LimitTuple{65536, limits.maxUniformBufferRange, "maxUniformBufferRange"},
+        LimitTuple{16, limits.maxViewports, "maxViewports"},
+        LimitTuple{8, limits.maxColorAttachments, "maxColorAttachments"},
+        LimitTuple{8, limits.maxClipDistances, "maxClipDistances"},
+    };
+    for (const auto& tuple : limits_report) {
+        if (tuple.value < tuple.minimum) {
+            LOG_ERROR(Render_Vulkan, "{} has to be {} or greater but it is {}", tuple.name,
+                      tuple.minimum, tuple.value);
+            throw vk::Exception(VK_ERROR_FEATURE_NOT_PRESENT);
+        }
     }
-
-    // TODO(Rodrigo): Check if the device matches all requeriments.
-    const auto properties{physical.GetProperties()};
-    const auto& limits{properties.limits};
-
-    constexpr u32 required_ubo_size = 65536;
-    if (limits.maxUniformBufferRange < required_ubo_size) {
-        LOG_ERROR(Render_Vulkan, "Device UBO size {} is too small, {} is required",
-                  limits.maxUniformBufferRange, required_ubo_size);
-        is_suitable = false;
-    }
-
-    constexpr u32 required_num_viewports = 16;
-    if (limits.maxViewports < required_num_viewports) {
-        LOG_INFO(Render_Vulkan, "Device number of viewports {} is too small, {} is required",
-                 limits.maxViewports, required_num_viewports);
-        is_suitable = false;
-    }
-
-    const auto features{physical.GetFeatures()};
-    const std::array feature_report = {
+    const VkPhysicalDeviceFeatures features{physical.GetFeatures()};
+    const std::array feature_report{
         std::make_pair(features.vertexPipelineStoresAndAtomics, "vertexPipelineStoresAndAtomics"),
         std::make_pair(features.imageCubeArray, "imageCubeArray"),
         std::make_pair(features.independentBlend, "independentBlend"),
@@ -627,26 +605,19 @@ bool VKDevice::IsSuitable(vk::PhysicalDevice physical, VkSurfaceKHR surface) {
         std::make_pair(features.occlusionQueryPrecise, "occlusionQueryPrecise"),
         std::make_pair(features.fragmentStoresAndAtomics, "fragmentStoresAndAtomics"),
         std::make_pair(features.shaderImageGatherExtended, "shaderImageGatherExtended"),
-        std::make_pair(features.shaderStorageImageMultisample, "shaderStorageImageMultisample"),
         std::make_pair(features.shaderStorageImageWriteWithoutFormat,
                        "shaderStorageImageWriteWithoutFormat"),
     };
-    for (const auto& [supported, name] : feature_report) {
-        if (supported) {
+    for (const auto& [is_supported, name] : feature_report) {
+        if (is_supported) {
             continue;
         }
         LOG_ERROR(Render_Vulkan, "Missing required feature: {}", name);
-        is_suitable = false;
+        throw vk::Exception(VK_ERROR_FEATURE_NOT_PRESENT);
     }
-
-    if (!is_suitable) {
-        LOG_ERROR(Render_Vulkan, "{} is not suitable", properties.deviceName);
-    }
-
-    return is_suitable;
 }
 
-std::vector<const char*> VKDevice::LoadExtensions() {
+std::vector<const char*> Device::LoadExtensions() {
     std::vector<const char*> extensions;
     extensions.reserve(7 + REQUIRED_EXTENSIONS.size());
     extensions.insert(extensions.begin(), REQUIRED_EXTENSIONS.begin(), REQUIRED_EXTENSIONS.end());
@@ -685,9 +656,7 @@ std::vector<const char*> VKDevice::LoadExtensions() {
         test(has_ext_custom_border_color, VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME, false);
         test(has_ext_extended_dynamic_state, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME, false);
         test(has_ext_robustness2, VK_EXT_ROBUSTNESS_2_EXTENSION_NAME, false);
-        if (instance_version >= VK_API_VERSION_1_1) {
-            test(has_ext_subgroup_size_control, VK_EXT_SUBGROUP_SIZE_CONTROL_EXTENSION_NAME, false);
-        }
+        test(has_ext_subgroup_size_control, VK_EXT_SUBGROUP_SIZE_CONTROL_EXTENSION_NAME, false);
         if (Settings::values.renderer_debug) {
             test(nv_device_diagnostics_config, VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME,
                  true);
@@ -801,39 +770,46 @@ std::vector<const char*> VKDevice::LoadExtensions() {
     return extensions;
 }
 
-void VKDevice::SetupFamilies(VkSurfaceKHR surface) {
-    std::optional<u32> graphics_family_, present_family_;
-
+void Device::SetupFamilies(VkSurfaceKHR surface) {
     const std::vector queue_family_properties = physical.GetQueueFamilyProperties();
-    for (u32 i = 0; i < static_cast<u32>(queue_family_properties.size()); ++i) {
-        if (graphics_family_ && present_family_)
+    std::optional<u32> graphics;
+    std::optional<u32> present;
+    for (u32 index = 0; index < static_cast<u32>(queue_family_properties.size()); ++index) {
+        if (graphics && (present || !surface)) {
             break;
-
-        const auto& queue_family = queue_family_properties[i];
-        if (queue_family.queueCount == 0)
-            continue;
-
-        if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            graphics_family_ = i;
         }
-        if (physical.GetSurfaceSupportKHR(i, surface)) {
-            present_family_ = i;
+        const VkQueueFamilyProperties& queue_family = queue_family_properties[index];
+        if (queue_family.queueCount == 0) {
+            continue;
+        }
+        if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            graphics = index;
+        }
+        if (surface && physical.GetSurfaceSupportKHR(index, surface)) {
+            present = index;
         }
     }
-    ASSERT(graphics_family_ && present_family_);
-
-    graphics_family = *graphics_family_;
-    present_family = *present_family_;
+    if (!graphics) {
+        LOG_ERROR(Render_Vulkan, "Device lacks a graphics queue");
+        throw vk::Exception(VK_ERROR_FEATURE_NOT_PRESENT);
+    }
+    if (surface && !present) {
+        LOG_ERROR(Render_Vulkan, "Device lacks a present queue");
+        throw vk::Exception(VK_ERROR_FEATURE_NOT_PRESENT);
+    }
+    graphics_family = *graphics;
+    present_family = *present;
 }
 
-void VKDevice::SetupFeatures() {
+void Device::SetupFeatures() {
     const auto supported_features{physical.GetFeatures()};
     is_formatless_image_load_supported = supported_features.shaderStorageImageReadWithoutFormat;
+    is_shader_storage_image_multisample = supported_features.shaderStorageImageMultisample;
     is_blit_depth_stencil_supported = TestDepthStencilBlits();
     is_optimal_astc_supported = IsOptimalAstcSupported(supported_features);
 }
 
-void VKDevice::CollectTelemetryParameters() {
+void Device::CollectTelemetryParameters() {
     VkPhysicalDeviceDriverPropertiesKHR driver{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR,
         .pNext = nullptr,
@@ -860,7 +836,7 @@ void VKDevice::CollectTelemetryParameters() {
     }
 }
 
-void VKDevice::CollectToolingInfo() {
+void Device::CollectToolingInfo() {
     if (!ext_tooling_info) {
         return;
     }
@@ -886,7 +862,7 @@ void VKDevice::CollectToolingInfo() {
     }
 }
 
-std::vector<VkDeviceQueueCreateInfo> VKDevice::GetDeviceQueueCreateInfos() const {
+std::vector<VkDeviceQueueCreateInfo> Device::GetDeviceQueueCreateInfos() const {
     static constexpr float QUEUE_PRIORITY = 1.0f;
 
     std::unordered_set<u32> unique_queue_families{graphics_family, present_family};

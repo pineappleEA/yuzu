@@ -61,7 +61,7 @@ using VideoCore::Surface::SurfaceType;
 template <class P>
 class TextureCache {
     /// Address shift for caching images into a hash table
-    static constexpr u64 PAGE_SHIFT = 20;
+    static constexpr u64 PAGE_BITS = 20;
 
     /// Enables debugging features to the texture cache
     static constexpr bool ENABLE_VALIDATION = P::ENABLE_VALIDATION;
@@ -184,8 +184,8 @@ private:
     template <typename Func>
     static void ForEachPage(VAddr addr, size_t size, Func&& func) {
         static constexpr bool RETURNS_BOOL = std::is_same_v<std::invoke_result<Func, u64>, bool>;
-        const u64 page_end = (addr + size - 1) >> PAGE_SHIFT;
-        for (u64 page = addr >> PAGE_SHIFT; page <= page_end; ++page) {
+        const u64 page_end = (addr + size - 1) >> PAGE_BITS;
+        for (u64 page = addr >> PAGE_BITS; page <= page_end; ++page) {
             if constexpr (RETURNS_BOOL) {
                 if (func(page)) {
                     break;
@@ -708,7 +708,7 @@ void TextureCache<P>::InvalidateDepthBuffer() {
 template <class P>
 typename P::ImageView* TextureCache<P>::TryFindFramebufferImageView(VAddr cpu_addr) {
     // TODO: Properly implement this
-    const auto it = page_table.find(cpu_addr >> PAGE_SHIFT);
+    const auto it = page_table.find(cpu_addr >> PAGE_BITS);
     if (it == page_table.end()) {
         return nullptr;
     }
@@ -883,6 +883,7 @@ ImageId TextureCache<P>::FindImage(const ImageInfo& info, GPUVAddr gpu_addr,
     if (!cpu_addr) {
         return ImageId{};
     }
+    const bool broken_views = runtime.HasBrokenTextureViewFormats();
     ImageId image_id;
     const auto lambda = [&](ImageId existing_image_id, ImageBase& existing_image) {
         if (info.type == ImageType::Linear || existing_image.info.type == ImageType::Linear) {
@@ -892,11 +893,11 @@ ImageId TextureCache<P>::FindImage(const ImageInfo& info, GPUVAddr gpu_addr,
             if (existing_image.gpu_addr == gpu_addr && existing.type == info.type &&
                 existing.pitch == info.pitch &&
                 IsPitchLinearSameSize(existing, info, strict_size) &&
-                IsViewCompatible(existing.format, info.format)) {
+                IsViewCompatible(existing.format, info.format, broken_views)) {
                 image_id = existing_image_id;
                 return true;
             }
-        } else if (IsSubresource(info, existing_image, gpu_addr, options)) {
+        } else if (IsSubresource(info, existing_image, gpu_addr, options, broken_views)) {
             image_id = existing_image_id;
             return true;
         }
@@ -926,6 +927,7 @@ template <class P>
 ImageId TextureCache<P>::JoinImages(const ImageInfo& info, GPUVAddr gpu_addr, VAddr cpu_addr) {
     ImageInfo new_info = info;
     const size_t size_bytes = CalculateGuestSizeInBytes(new_info);
+    const bool broken_views = runtime.HasBrokenTextureViewFormats();
     std::vector<ImageId> overlap_ids;
     std::vector<ImageId> left_aliased_ids;
     std::vector<ImageId> right_aliased_ids;
@@ -940,7 +942,9 @@ ImageId TextureCache<P>::JoinImages(const ImageInfo& info, GPUVAddr gpu_addr, VA
             }
             return;
         }
-        const auto solution = ResolveOverlap(new_info, gpu_addr, cpu_addr, overlap, true);
+        static constexpr bool strict_size = true;
+        const std::optional<OverlapResult> solution =
+            ResolveOverlap(new_info, gpu_addr, cpu_addr, overlap, strict_size, broken_views);
         if (solution) {
             gpu_addr = solution->gpu_addr;
             cpu_addr = solution->cpu_addr;
@@ -950,9 +954,10 @@ ImageId TextureCache<P>::JoinImages(const ImageInfo& info, GPUVAddr gpu_addr, VA
         }
         static constexpr auto options = RelaxedOptions::Size | RelaxedOptions::Format;
         const ImageBase new_image_base(new_info, gpu_addr, cpu_addr);
-        if (IsSubresource(new_info, overlap, gpu_addr, options)) {
+        if (IsSubresource(new_info, overlap, gpu_addr, options, broken_views)) {
             left_aliased_ids.push_back(overlap_id);
-        } else if (IsSubresource(overlap.info, new_image_base, overlap.gpu_addr, options)) {
+        } else if (IsSubresource(overlap.info, new_image_base, overlap.gpu_addr, options,
+                                 broken_views)) {
             right_aliased_ids.push_back(overlap_id);
         }
     });
@@ -1165,13 +1170,13 @@ void TextureCache<P>::UnregisterImage(ImageId image_id) {
     ForEachPage(image.cpu_addr, image.guest_size_bytes, [this, image_id](u64 page) {
         const auto page_it = page_table.find(page);
         if (page_it == page_table.end()) {
-            UNREACHABLE_MSG("Unregistering unregistered page=0x{:x}", page << PAGE_SHIFT);
+            UNREACHABLE_MSG("Unregistering unregistered page=0x{:x}", page << PAGE_BITS);
             return;
         }
         std::vector<ImageId>& image_ids = page_it->second;
         const auto vector_it = std::ranges::find(image_ids, image_id);
         if (vector_it == image_ids.end()) {
-            UNREACHABLE_MSG("Unregistering unregistered image in page=0x{:x}", page << PAGE_SHIFT);
+            UNREACHABLE_MSG("Unregistering unregistered image in page=0x{:x}", page << PAGE_BITS);
             return;
         }
         image_ids.erase(vector_it);
