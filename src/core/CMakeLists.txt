@@ -142,6 +142,8 @@ add_library(core STATIC
     hardware_interrupt_manager.h
     hle/ipc.h
     hle/ipc_helpers.h
+    hle/kernel/address_arbiter.cpp
+    hle/kernel/address_arbiter.h
     hle/kernel/client_port.cpp
     hle/kernel/client_port.h
     hle/kernel/client_session.cpp
@@ -155,19 +157,13 @@ add_library(core STATIC
     hle/kernel/handle_table.h
     hle/kernel/hle_ipc.cpp
     hle/kernel/hle_ipc.h
-    hle/kernel/k_address_arbiter.cpp
-    hle/kernel/k_address_arbiter.h
     hle/kernel/k_affinity_mask.h
-    hle/kernel/k_condition_variable.cpp
-    hle/kernel/k_condition_variable.h
     hle/kernel/k_priority_queue.h
     hle/kernel/k_scheduler.cpp
     hle/kernel/k_scheduler.h
     hle/kernel/k_scheduler_lock.h
     hle/kernel/k_scoped_lock.h
     hle/kernel/k_scoped_scheduler_lock_and_sleep.h
-    hle/kernel/k_synchronization_object.cpp
-    hle/kernel/k_synchronization_object.h
     hle/kernel/kernel.cpp
     hle/kernel/kernel.h
     hle/kernel/memory/address_space_info.cpp
@@ -187,6 +183,8 @@ add_library(core STATIC
     hle/kernel/memory/slab_heap.h
     hle/kernel/memory/system_control.cpp
     hle/kernel/memory/system_control.h
+    hle/kernel/mutex.cpp
+    hle/kernel/mutex.h
     hle/kernel/object.cpp
     hle/kernel/object.h
     hle/kernel/physical_core.cpp
@@ -212,10 +210,12 @@ add_library(core STATIC
     hle/kernel/shared_memory.h
     hle/kernel/svc.cpp
     hle/kernel/svc.h
-    hle/kernel/svc_common.h
-    hle/kernel/svc_results.h
     hle/kernel/svc_types.h
     hle/kernel/svc_wrap.h
+    hle/kernel/synchronization_object.cpp
+    hle/kernel/synchronization_object.h
+    hle/kernel/synchronization.cpp
+    hle/kernel/synchronization.h
     hle/kernel/thread.cpp
     hle/kernel/thread.h
     hle/kernel/time_manager.cpp
@@ -635,15 +635,15 @@ if (MSVC)
         /we4267
         # 'context' : truncation from 'type1' to 'type2'
         /we4305
-        # 'function' : not all control paths return a value
-        /we4715
     )
 else()
     target_compile_options(core PRIVATE
         -Werror=conversion
         -Werror=ignored-qualifiers
         -Werror=implicit-fallthrough
+        -Werror=reorder
         -Werror=sign-compare
+        -Werror=unused-variable
 
         $<$<CXX_COMPILER_ID:GNU>:-Werror=unused-but-set-parameter>
         $<$<CXX_COMPILER_ID:GNU>:-Werror=unused-but-set-variable>

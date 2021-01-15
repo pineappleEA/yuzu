@@ -87,19 +87,17 @@ void SwizzleImage(Tegra::MemoryManager& gpu_memory, GPUVAddr gpu_addr, const Ima
 [[nodiscard]] std::optional<OverlapResult> ResolveOverlap(const ImageInfo& new_info,
                                                           GPUVAddr gpu_addr, VAddr cpu_addr,
                                                           const ImageBase& overlap,
-                                                          bool strict_size, bool broken_views);
+                                                          bool strict_size);
 
 [[nodiscard]] bool IsLayerStrideCompatible(const ImageInfo& lhs, const ImageInfo& rhs);
 
 [[nodiscard]] std::optional<SubresourceBase> FindSubresource(const ImageInfo& candidate,
                                                              const ImageBase& image,
                                                              GPUVAddr candidate_addr,
-                                                             RelaxedOptions options,
-                                                             bool broken_views);
+                                                             RelaxedOptions options);
 
 [[nodiscard]] bool IsSubresource(const ImageInfo& candidate, const ImageBase& image,
-                                 GPUVAddr candidate_addr, RelaxedOptions options,
-                                 bool broken_views);
+                                 GPUVAddr candidate_addr, RelaxedOptions options);
 
 void DeduceBlitImages(ImageInfo& dst_info, ImageInfo& src_info, const ImageBase* dst,
                       const ImageBase* src);

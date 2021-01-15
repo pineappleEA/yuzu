@@ -49,7 +49,6 @@ void CoreTiming::ThreadEntry(CoreTiming& instance) {
     Common::SetCurrentThreadPriority(Common::ThreadPriority::VeryHigh);
     instance.on_thread_init();
     instance.ThreadLoop();
-    MicroProfileOnThreadExit();
 }
 
 void CoreTiming::Initialize(std::function<void()>&& on_thread_init_) {

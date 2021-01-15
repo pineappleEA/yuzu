@@ -129,10 +129,8 @@ private:
     std::list<u32> queue_sequence;
     Kernel::EventPair buffer_wait_event;
 
-    std::mutex free_buffers_mutex;
-    std::condition_variable free_buffers_condition;
-
-    std::mutex queue_sequence_mutex;
+    std::mutex queue_mutex;
+    std::condition_variable condition;
 };
 
 } // namespace Service::NVFlinger

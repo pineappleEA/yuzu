@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <thread>
 
 #include <QSignalBlocker>
 #include <QTimer>
@@ -182,18 +181,8 @@ QList<QWidget*> ConfigureInput::GetSubTabs() const {
 }
 
 void ConfigureInput::ApplyConfiguration() {
-    for (auto* controller : player_controllers) {
+    for (auto controller : player_controllers) {
         controller->ApplyConfiguration();
-        controller->TryDisconnectSelectedController();
-    }
-
-    // This emulates a delay between disconnecting and reconnecting controllers as some games
-    // do not respond to a change in controller type if it was instantaneous.
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(60ms);
-
-    for (auto* controller : player_controllers) {
-        controller->TryConnectSelectedController();
     }
 
     advanced->ApplyConfiguration();

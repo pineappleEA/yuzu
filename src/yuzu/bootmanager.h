@@ -184,7 +184,6 @@ signals:
     void Closed();
     void FirstFrameDisplayed();
     void ExecuteProgramSignal(std::size_t program_index);
-    void MouseActivity();
 
 private:
     void TouchBeginEvent(const QTouchEvent* event);
@@ -217,5 +216,4 @@ private:
 
 protected:
     void showEvent(QShowEvent* event) override;
-    bool eventFilter(QObject* object, QEvent* event) override;
 };

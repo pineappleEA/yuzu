@@ -24,9 +24,9 @@
 #include "video_core/renderer_opengl/gl_device.h"
 #include "video_core/renderer_opengl/gl_resource_manager.h"
 #include "video_core/renderer_opengl/gl_shader_decompiler.h"
+#include "video_core/renderer_vulkan/vk_device.h"
 #include "video_core/renderer_vulkan/vk_pipeline_cache.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
-#include "video_core/vulkan_common/vulkan_device.h"
 
 namespace Core::Frontend {
 class EmuWindow;
@@ -94,7 +94,7 @@ public:
                            CompilerSettings compiler_settings, const Registry& registry,
                            VAddr cpu_addr);
 
-    void QueueVulkanShader(Vulkan::VKPipelineCache* pp_cache, const Vulkan::Device& device,
+    void QueueVulkanShader(Vulkan::VKPipelineCache* pp_cache, const Vulkan::VKDevice& device,
                            Vulkan::VKScheduler& scheduler,
                            Vulkan::VKDescriptorPool& descriptor_pool,
                            Vulkan::VKUpdateDescriptorQueue& update_descriptor_queue,
@@ -123,7 +123,7 @@ private:
 
         // For Vulkan
         Vulkan::VKPipelineCache* pp_cache;
-        const Vulkan::Device* vk_device;
+        const Vulkan::VKDevice* vk_device;
         Vulkan::VKScheduler* scheduler;
         Vulkan::VKDescriptorPool* descriptor_pool;
         Vulkan::VKUpdateDescriptorQueue* update_descriptor_queue;

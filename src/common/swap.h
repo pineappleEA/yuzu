@@ -394,7 +394,7 @@ public:
     template <typename S, typename T2, typename F2>
     friend S operator%(const S& p, const swapped_t v);
 
-    // Arithmetics + assignments
+    // Arithmetics + assignements
     template <typename S, typename T2, typename F2>
     friend S operator+=(const S& p, const swapped_t v);
 
@@ -451,7 +451,7 @@ S operator%(const S& i, const swap_struct_t<T, F> v) {
     return i % v.swap();
 }
 
-// Arithmetics + assignments
+// Arithmetics + assignements
 template <typename S, typename T, typename F>
 S& operator+=(S& i, const swap_struct_t<T, F> v) {
     i += v.swap();

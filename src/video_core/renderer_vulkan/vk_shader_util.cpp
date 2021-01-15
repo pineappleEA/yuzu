@@ -7,13 +7,13 @@
 
 #include "common/assert.h"
 #include "common/common_types.h"
+#include "video_core/renderer_vulkan/vk_device.h"
 #include "video_core/renderer_vulkan/vk_shader_util.h"
-#include "video_core/vulkan_common/vulkan_device.h"
-#include "video_core/vulkan_common/vulkan_wrapper.h"
+#include "video_core/renderer_vulkan/wrapper.h"
 
 namespace Vulkan {
 
-vk::ShaderModule BuildShader(const Device& device, std::span<const u32> code) {
+vk::ShaderModule BuildShader(const VKDevice& device, std::span<const u32> code) {
     return device.GetLogical().CreateShaderModule({
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .pNext = nullptr,

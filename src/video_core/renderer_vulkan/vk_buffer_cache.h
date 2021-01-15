@@ -11,17 +11,17 @@
 #include "video_core/renderer_vulkan/vk_memory_manager.h"
 #include "video_core/renderer_vulkan/vk_staging_buffer_pool.h"
 #include "video_core/renderer_vulkan/vk_stream_buffer.h"
-#include "video_core/vulkan_common/vulkan_wrapper.h"
+#include "video_core/renderer_vulkan/wrapper.h"
 
 namespace Vulkan {
 
-class Device;
+class VKDevice;
 class VKMemoryManager;
 class VKScheduler;
 
 class Buffer final : public VideoCommon::BufferBlock {
 public:
-    explicit Buffer(const Device& device, VKMemoryManager& memory_manager, VKScheduler& scheduler,
+    explicit Buffer(const VKDevice& device, VKMemoryManager& memory_manager, VKScheduler& scheduler,
                     VKStagingBufferPool& staging_pool, VAddr cpu_addr_, std::size_t size_);
     ~Buffer();
 
@@ -41,7 +41,7 @@ public:
     }
 
 private:
-    const Device& device;
+    const VKDevice& device;
     VKScheduler& scheduler;
     VKStagingBufferPool& staging_pool;
 
@@ -52,7 +52,7 @@ class VKBufferCache final : public VideoCommon::BufferCache<Buffer, VkBuffer, VK
 public:
     explicit VKBufferCache(VideoCore::RasterizerInterface& rasterizer,
                            Tegra::MemoryManager& gpu_memory, Core::Memory::Memory& cpu_memory,
-                           const Device& device, VKMemoryManager& memory_manager,
+                           const VKDevice& device, VKMemoryManager& memory_manager,
                            VKScheduler& scheduler, VKStreamBuffer& stream_buffer,
                            VKStagingBufferPool& staging_pool);
     ~VKBufferCache();
@@ -63,7 +63,7 @@ protected:
     std::shared_ptr<Buffer> CreateBlock(VAddr cpu_addr, std::size_t size) override;
 
 private:
-    const Device& device;
+    const VKDevice& device;
     VKMemoryManager& memory_manager;
     VKScheduler& scheduler;
     VKStagingBufferPool& staging_pool;

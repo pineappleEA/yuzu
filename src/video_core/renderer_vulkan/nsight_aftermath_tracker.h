@@ -34,6 +34,8 @@ public:
     NsightAftermathTracker(NsightAftermathTracker&&) = delete;
     NsightAftermathTracker& operator=(NsightAftermathTracker&&) = delete;
 
+    bool Initialize();
+
     void SaveShader(const std::vector<u32>& spirv) const;
 
 private:
@@ -76,6 +78,9 @@ private:
 #ifndef HAS_NSIGHT_AFTERMATH
 inline NsightAftermathTracker::NsightAftermathTracker() = default;
 inline NsightAftermathTracker::~NsightAftermathTracker() = default;
+inline bool NsightAftermathTracker::Initialize() {
+    return false;
+}
 inline void NsightAftermathTracker::SaveShader(const std::vector<u32>&) const {}
 #endif
 

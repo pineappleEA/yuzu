@@ -12,7 +12,7 @@
 #include "common/common_types.h"
 #include "video_core/query_cache.h"
 #include "video_core/renderer_vulkan/vk_resource_pool.h"
-#include "video_core/vulkan_common/vulkan_wrapper.h"
+#include "video_core/renderer_vulkan/wrapper.h"
 
 namespace VideoCore {
 class RasterizerInterface;
@@ -21,8 +21,8 @@ class RasterizerInterface;
 namespace Vulkan {
 
 class CachedQuery;
-class Device;
 class HostCounter;
+class VKDevice;
 class VKQueryCache;
 class VKScheduler;
 
@@ -30,7 +30,7 @@ using CounterStream = VideoCommon::CounterStreamBase<VKQueryCache, HostCounter>;
 
 class QueryPool final : public ResourcePool {
 public:
-    explicit QueryPool(const Device& device, VKScheduler& scheduler, VideoCore::QueryType type);
+    explicit QueryPool(const VKDevice& device, VKScheduler& scheduler, VideoCore::QueryType type);
     ~QueryPool() override;
 
     std::pair<VkQueryPool, u32> Commit();
@@ -43,7 +43,7 @@ protected:
 private:
     static constexpr std::size_t GROW_STEP = 512;
 
-    const Device& device;
+    const VKDevice& device;
     const VideoCore::QueryType type;
 
     std::vector<vk::QueryPool> pools;
@@ -55,23 +55,23 @@ class VKQueryCache final
 public:
     explicit VKQueryCache(VideoCore::RasterizerInterface& rasterizer_,
                           Tegra::Engines::Maxwell3D& maxwell3d_, Tegra::MemoryManager& gpu_memory_,
-                          const Device& device_, VKScheduler& scheduler_);
+                          const VKDevice& device_, VKScheduler& scheduler_);
     ~VKQueryCache();
 
     std::pair<VkQueryPool, u32> AllocateQuery(VideoCore::QueryType type);
 
     void Reserve(VideoCore::QueryType type, std::pair<VkQueryPool, u32> query);
 
-    const Device& GetDevice() const noexcept {
+    const VKDevice& Device() const noexcept {
         return device;
     }
 
-    VKScheduler& GetScheduler() const noexcept {
+    VKScheduler& Scheduler() const noexcept {
         return scheduler;
     }
 
 private:
-    const Device& device;
+    const VKDevice& device;
     VKScheduler& scheduler;
     std::array<QueryPool, VideoCore::NumQueryTypes> query_pools;
 };

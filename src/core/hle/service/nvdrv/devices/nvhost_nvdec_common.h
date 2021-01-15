@@ -10,16 +10,12 @@
 #include "common/swap.h"
 #include "core/hle/service/nvdrv/devices/nvdevice.h"
 
-namespace Service::Nvidia {
-class SyncpointManager;
-
-namespace Devices {
+namespace Service::Nvidia::Devices {
 class nvmap;
 
 class nvhost_nvdec_common : public nvdevice {
 public:
-    explicit nvhost_nvdec_common(Core::System& system, std::shared_ptr<nvmap> nvmap_dev,
-                                 SyncpointManager& syncpoint_manager);
+    explicit nvhost_nvdec_common(Core::System& system, std::shared_ptr<nvmap> nvmap_dev);
     ~nvhost_nvdec_common() override;
 
 protected:
@@ -161,10 +157,8 @@ protected:
     s32_le nvmap_fd{};
     u32_le submit_timeout{};
     std::shared_ptr<nvmap> nvmap_dev;
-    SyncpointManager& syncpoint_manager;
-    std::array<u32, MaxSyncPoints> device_syncpoints{};
+
     // This is expected to be ordered, therefore we must use a map, not unordered_map
     std::map<GPUVAddr, BufferMap> buffer_mappings;
 };
-}; // namespace Devices
-} // namespace Service::Nvidia
+}; // namespace Service::Nvidia::Devices

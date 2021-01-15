@@ -115,6 +115,8 @@ add_library(video_core STATIC
     renderer_vulkan/fixed_pipeline_state.h
     renderer_vulkan/maxwell_to_vk.cpp
     renderer_vulkan/maxwell_to_vk.h
+    renderer_vulkan/nsight_aftermath_tracker.cpp
+    renderer_vulkan/nsight_aftermath_tracker.h
     renderer_vulkan/renderer_vulkan.h
     renderer_vulkan/renderer_vulkan.cpp
     renderer_vulkan/vk_blit_screen.cpp
@@ -129,6 +131,8 @@ add_library(video_core STATIC
     renderer_vulkan/vk_compute_pipeline.h
     renderer_vulkan/vk_descriptor_pool.cpp
     renderer_vulkan/vk_descriptor_pool.h
+    renderer_vulkan/vk_device.cpp
+    renderer_vulkan/vk_device.h
     renderer_vulkan/vk_fence_manager.cpp
     renderer_vulkan/vk_fence_manager.h
     renderer_vulkan/vk_graphics_pipeline.cpp
@@ -163,6 +167,8 @@ add_library(video_core STATIC
     renderer_vulkan/vk_texture_cache.h
     renderer_vulkan/vk_update_descriptor.cpp
     renderer_vulkan/vk_update_descriptor.h
+    renderer_vulkan/wrapper.cpp
+    renderer_vulkan/wrapper.h
     shader_cache.h
     shader_notify.cpp
     shader_notify.h
@@ -251,20 +257,6 @@ add_library(video_core STATIC
     textures/texture.h
     video_core.cpp
     video_core.h
-    vulkan_common/vulkan_debug_callback.cpp
-    vulkan_common/vulkan_debug_callback.h
-    vulkan_common/vulkan_device.cpp
-    vulkan_common/vulkan_device.h
-    vulkan_common/vulkan_instance.cpp
-    vulkan_common/vulkan_instance.h
-    vulkan_common/vulkan_library.cpp
-    vulkan_common/vulkan_library.h
-    vulkan_common/vulkan_surface.cpp
-    vulkan_common/vulkan_surface.h
-    vulkan_common/vulkan_wrapper.cpp
-    vulkan_common/vulkan_wrapper.h
-    vulkan_common/nsight_aftermath_tracker.cpp
-    vulkan_common/nsight_aftermath_tracker.h
 )
 
 create_target_directory_groups(video_core)
@@ -312,7 +304,9 @@ else()
         -Werror=pessimizing-move
         -Werror=redundant-move
         -Werror=shadow
+        -Werror=switch
         -Werror=type-limits
+        -Werror=unused-variable
 
         $<$<CXX_COMPILER_ID:GNU>:-Werror=class-memaccess>
         $<$<CXX_COMPILER_ID:GNU>:-Werror=unused-but-set-parameter>

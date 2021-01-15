@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "core/hle/kernel/k_synchronization_object.h"
 #include "core/hle/kernel/object.h"
+#include "core/hle/kernel/synchronization_object.h"
 
 union ResultCode;
 
@@ -14,7 +14,7 @@ namespace Kernel {
 class KernelCore;
 class WritableEvent;
 
-class ReadableEvent final : public KSynchronizationObject {
+class ReadableEvent final : public SynchronizationObject {
     friend class WritableEvent;
 
 public:
@@ -32,6 +32,9 @@ public:
         return HANDLE_TYPE;
     }
 
+    bool ShouldWait(const Thread* thread) const override;
+    void Acquire(Thread* thread) override;
+
     /// Unconditionally clears the readable event's state.
     void Clear();
 
@@ -43,14 +46,11 @@ public:
     ///      then ERR_INVALID_STATE will be returned.
     ResultCode Reset();
 
-    void Signal();
-
-    bool IsSignaled() const override;
+    void Signal() override;
 
 private:
     explicit ReadableEvent(KernelCore& kernel);
 
-    bool is_signaled{};
     std::string name; ///< Name of event (optional)
 };
 

@@ -11,7 +11,7 @@
 #include "common/dynamic_library.h"
 
 #include "video_core/renderer_base.h"
-#include "video_core/vulkan_common/vulkan_wrapper.h"
+#include "video_core/renderer_vulkan/wrapper.h"
 
 namespace Core {
 class TelemetrySession;
@@ -27,9 +27,9 @@ class GPU;
 
 namespace Vulkan {
 
-class Device;
 class StateTracker;
 class VKBlitScreen;
+class VKDevice;
 class VKMemoryManager;
 class VKSwapchain;
 class VKScheduler;
@@ -56,7 +56,11 @@ public:
     static std::vector<std::string> EnumerateDevices();
 
 private:
-    void InitializeDevice();
+    bool CreateDebugCallback();
+
+    bool CreateSurface();
+
+    bool PickDevices();
 
     void Report() const;
 
@@ -68,13 +72,14 @@ private:
     vk::InstanceDispatch dld;
 
     vk::Instance instance;
+    u32 instance_version{};
 
     vk::SurfaceKHR surface;
 
     VKScreenInfo screen_info;
 
-    vk::DebugUtilsMessenger debug_callback;
-    std::unique_ptr<Device> device;
+    vk::DebugCallback debug_callback;
+    std::unique_ptr<VKDevice> device;
     std::unique_ptr<VKMemoryManager> memory_manager;
     std::unique_ptr<StateTracker> state_tracker;
     std::unique_ptr<VKScheduler> scheduler;

@@ -145,18 +145,10 @@ void ColorConsoleBackend::Write(const Entry& entry) {
     PrintColoredMessage(entry);
 }
 
-FileBackend::FileBackend(const std::string& filename) : bytes_written(0) {
-    if (Common::FS::Exists(filename + ".old.txt")) {
-        Common::FS::Delete(filename + ".old.txt");
-    }
-    if (Common::FS::Exists(filename)) {
-        Common::FS::Rename(filename, filename + ".old.txt");
-    }
-
-    // _SH_DENYWR allows read only access to the file for other programs.
-    // It is #defined to 0 on other platforms
-    file = Common::FS::IOFile(filename, "w", _SH_DENYWR);
-}
+// _SH_DENYWR allows read only access to the file for other programs.
+// It is #defined to 0 on other platforms
+FileBackend::FileBackend(const std::string& filename)
+    : file(filename, "w", _SH_DENYWR), bytes_written(0) {}
 
 void FileBackend::Write(const Entry& entry) {
     // prevent logs from going over the maximum size (in case its spamming and the user doesn't

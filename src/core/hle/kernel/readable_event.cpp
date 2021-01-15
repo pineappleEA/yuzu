@@ -14,8 +14,16 @@
 
 namespace Kernel {
 
-ReadableEvent::ReadableEvent(KernelCore& kernel) : KSynchronizationObject{kernel} {}
+ReadableEvent::ReadableEvent(KernelCore& kernel) : SynchronizationObject{kernel} {}
 ReadableEvent::~ReadableEvent() = default;
+
+bool ReadableEvent::ShouldWait(const Thread* thread) const {
+    return !is_signaled;
+}
+
+void ReadableEvent::Acquire(Thread* thread) {
+    ASSERT_MSG(IsSignaled(), "object unavailable!");
+}
 
 void ReadableEvent::Signal() {
     if (is_signaled) {
@@ -23,13 +31,7 @@ void ReadableEvent::Signal() {
     }
 
     is_signaled = true;
-    NotifyAvailable();
-}
-
-bool ReadableEvent::IsSignaled() const {
-    ASSERT(kernel.GlobalSchedulerContext().IsLocked());
-
-    return is_signaled;
+    SynchronizationObject::Signal();
 }
 
 void ReadableEvent::Clear() {

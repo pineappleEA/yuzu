@@ -13,7 +13,7 @@
 
 namespace Kernel {
 
-ServerPort::ServerPort(KernelCore& kernel) : KSynchronizationObject{kernel} {}
+ServerPort::ServerPort(KernelCore& kernel) : SynchronizationObject{kernel} {}
 ServerPort::~ServerPort() = default;
 
 ResultVal<std::shared_ptr<ServerSession>> ServerPort::Accept() {
@@ -28,9 +28,15 @@ ResultVal<std::shared_ptr<ServerSession>> ServerPort::Accept() {
 
 void ServerPort::AppendPendingSession(std::shared_ptr<ServerSession> pending_session) {
     pending_sessions.push_back(std::move(pending_session));
-    if (pending_sessions.size() == 1) {
-        NotifyAvailable();
-    }
+}
+
+bool ServerPort::ShouldWait(const Thread* thread) const {
+    // If there are no pending sessions, we wait until a new one is added.
+    return pending_sessions.empty();
+}
+
+void ServerPort::Acquire(Thread* thread) {
+    ASSERT_MSG(!ShouldWait(thread), "object unavailable!");
 }
 
 bool ServerPort::IsSignaled() const {

@@ -108,6 +108,7 @@ add_library(common STATIC
     bit_util.h
     cityhash.cpp
     cityhash.h
+    color.h
     common_funcs.h
     common_paths.h
     common_types.h
@@ -122,7 +123,6 @@ add_library(common STATIC
     hash.h
     hex_util.cpp
     hex_util.h
-    intrusive_red_black_tree.h
     logging/backend.cpp
     logging/backend.h
     logging/filter.cpp
@@ -143,7 +143,6 @@ add_library(common STATIC
     page_table.h
     param_package.cpp
     param_package.h
-    parent_of_member.h
     quaternion.h
     ring_buffer.h
     scm_rev.cpp
@@ -166,7 +165,8 @@ add_library(common STATIC
     threadsafe_queue.h
     time_zone.cpp
     time_zone.h
-    tree.h
+    timer.cpp
+    timer.h
     uint128.cpp
     uint128.h
     uuid.cpp

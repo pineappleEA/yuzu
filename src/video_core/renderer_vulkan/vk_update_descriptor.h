@@ -8,11 +8,11 @@
 #include <boost/container/static_vector.hpp>
 
 #include "common/common_types.h"
-#include "video_core/vulkan_common/vulkan_wrapper.h"
+#include "video_core/renderer_vulkan/wrapper.h"
 
 namespace Vulkan {
 
-class Device;
+class VKDevice;
 class VKScheduler;
 
 struct DescriptorUpdateEntry {
@@ -31,7 +31,7 @@ struct DescriptorUpdateEntry {
 
 class VKUpdateDescriptorQueue final {
 public:
-    explicit VKUpdateDescriptorQueue(const Device& device_, VKScheduler& scheduler_);
+    explicit VKUpdateDescriptorQueue(const VKDevice& device_, VKScheduler& scheduler_);
     ~VKUpdateDescriptorQueue();
 
     void TickFrame();
@@ -69,7 +69,7 @@ public:
     }
 
 private:
-    const Device& device;
+    const VKDevice& device;
     VKScheduler& scheduler;
 
     const DescriptorUpdateEntry* upload_start = nullptr;

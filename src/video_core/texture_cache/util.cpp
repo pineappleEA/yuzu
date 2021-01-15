@@ -279,7 +279,7 @@ template <u32 GOB_EXTENT>
     const bool is_small = IsSmallerThanGobSize(blocks, gob, info.block.depth);
     const u32 alignment = is_small ? 0 : info.tile_width_spacing;
     return Extent2D{
-        .width = Common::AlignUpLog2(gobs.width, alignment),
+        .width = Common::AlignBits(gobs.width, alignment),
         .height = gobs.height,
     };
 }
@@ -352,7 +352,7 @@ template <u32 GOB_EXTENT>
     // https://github.com/Ryujinx/Ryujinx/blob/1c9aba6de1520aea5480c032e0ff5664ac1bb36f/Ryujinx.Graphics.Texture/SizeCalculator.cs#L134
     if (tile_width_spacing > 0) {
         const u32 alignment_log2 = GOB_SIZE_SHIFT + tile_width_spacing + block.height + block.depth;
-        return Common::AlignUpLog2(size_bytes, alignment_log2);
+        return Common::AlignBits(size_bytes, alignment_log2);
     }
     const u32 aligned_height = Common::AlignUp(size.height, tile_size_y);
     while (block.height != 0 && aligned_height <= (1U << (block.height - 1)) * GOB_SIZE_Y) {
@@ -528,9 +528,9 @@ template <u32 GOB_EXTENT>
     const u32 alignment = StrideAlignment(num_tiles, info.block, bpp_log2, info.tile_width_spacing);
     const Extent3D mip_block = AdjustMipBlockSize(num_tiles, info.block, 0);
     return Extent3D{
-        .width = Common::AlignUpLog2(num_tiles.width, alignment),
-        .height = Common::AlignUpLog2(num_tiles.height, GOB_SIZE_Y_SHIFT + mip_block.height),
-        .depth = Common::AlignUpLog2(num_tiles.depth, GOB_SIZE_Z_SHIFT + mip_block.depth),
+        .width = Common::AlignBits(num_tiles.width, alignment),
+        .height = Common::AlignBits(num_tiles.height, GOB_SIZE_Y_SHIFT + mip_block.height),
+        .depth = Common::AlignBits(num_tiles.depth, GOB_SIZE_Z_SHIFT + mip_block.depth),
     };
 }
 
@@ -1069,13 +1069,13 @@ bool IsPitchLinearSameSize(const ImageInfo& lhs, const ImageInfo& rhs, bool stri
 
 std::optional<OverlapResult> ResolveOverlap(const ImageInfo& new_info, GPUVAddr gpu_addr,
                                             VAddr cpu_addr, const ImageBase& overlap,
-                                            bool strict_size, bool broken_views) {
+                                            bool strict_size) {
     ASSERT(new_info.type != ImageType::Linear);
     ASSERT(overlap.info.type != ImageType::Linear);
     if (!IsLayerStrideCompatible(new_info, overlap.info)) {
         return std::nullopt;
     }
-    if (!IsViewCompatible(overlap.info.format, new_info.format, broken_views)) {
+    if (!IsViewCompatible(overlap.info.format, new_info.format)) {
         return std::nullopt;
     }
     if (gpu_addr == overlap.gpu_addr) {
@@ -1118,15 +1118,14 @@ bool IsLayerStrideCompatible(const ImageInfo& lhs, const ImageInfo& rhs) {
 }
 
 std::optional<SubresourceBase> FindSubresource(const ImageInfo& candidate, const ImageBase& image,
-                                               GPUVAddr candidate_addr, RelaxedOptions options,
-                                               bool broken_views) {
+                                               GPUVAddr candidate_addr, RelaxedOptions options) {
     const std::optional<SubresourceBase> base = image.TryFindBase(candidate_addr);
     if (!base) {
         return std::nullopt;
     }
     const ImageInfo& existing = image.info;
     if (False(options & RelaxedOptions::Format)) {
-        if (!IsViewCompatible(existing.format, candidate.format, broken_views)) {
+        if (!IsViewCompatible(existing.format, candidate.format)) {
             return std::nullopt;
         }
     }
@@ -1163,8 +1162,8 @@ std::optional<SubresourceBase> FindSubresource(const ImageInfo& candidate, const
 }
 
 bool IsSubresource(const ImageInfo& candidate, const ImageBase& image, GPUVAddr candidate_addr,
-                   RelaxedOptions options, bool broken_views) {
-    return FindSubresource(candidate, image, candidate_addr, options, broken_views).has_value();
+                   RelaxedOptions options) {
+    return FindSubresource(candidate, image, candidate_addr, options).has_value();
 }
 
 void DeduceBlitImages(ImageInfo& dst_info, ImageInfo& src_info, const ImageBase* dst,

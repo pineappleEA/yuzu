@@ -8,15 +8,15 @@
 #include <thread>
 
 #include "common/common_types.h"
-#include "video_core/vulkan_common/vulkan_wrapper.h"
+#include "video_core/renderer_vulkan/wrapper.h"
 
 namespace Vulkan {
 
-class Device;
+class VKDevice;
 
 class MasterSemaphore {
 public:
-    explicit MasterSemaphore(const Device& device);
+    explicit MasterSemaphore(const VKDevice& device);
     ~MasterSemaphore();
 
     /// Returns the current logical tick.

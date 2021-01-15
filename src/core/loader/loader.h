@@ -135,7 +135,6 @@ enum class ResultStatus : u16 {
     ErrorINITooManyKIPs,
 };
 
-std::string GetResultStatusString(ResultStatus status);
 std::ostream& operator<<(std::ostream& os, ResultStatus status);
 
 /// Interface for loading an application

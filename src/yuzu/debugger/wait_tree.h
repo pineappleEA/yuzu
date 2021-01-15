@@ -18,8 +18,8 @@ class EmuThread;
 
 namespace Kernel {
 class HandleTable;
-class KSynchronizationObject;
 class ReadableEvent;
+class SynchronizationObject;
 class Thread;
 } // namespace Kernel
 
@@ -102,29 +102,30 @@ private:
 class WaitTreeSynchronizationObject : public WaitTreeExpandableItem {
     Q_OBJECT
 public:
-    explicit WaitTreeSynchronizationObject(const Kernel::KSynchronizationObject& object);
+    explicit WaitTreeSynchronizationObject(const Kernel::SynchronizationObject& object);
     ~WaitTreeSynchronizationObject() override;
 
     static std::unique_ptr<WaitTreeSynchronizationObject> make(
-        const Kernel::KSynchronizationObject& object);
+        const Kernel::SynchronizationObject& object);
     QString GetText() const override;
     std::vector<std::unique_ptr<WaitTreeItem>> GetChildren() const override;
 
 protected:
-    const Kernel::KSynchronizationObject& object;
+    const Kernel::SynchronizationObject& object;
 };
 
 class WaitTreeObjectList : public WaitTreeExpandableItem {
     Q_OBJECT
 public:
-    WaitTreeObjectList(const std::vector<Kernel::KSynchronizationObject*>& list, bool wait_all);
+    WaitTreeObjectList(const std::vector<std::shared_ptr<Kernel::SynchronizationObject>>& list,
+                       bool wait_all);
     ~WaitTreeObjectList() override;
 
     QString GetText() const override;
     std::vector<std::unique_ptr<WaitTreeItem>> GetChildren() const override;
 
 private:
-    const std::vector<Kernel::KSynchronizationObject*>& object_list;
+    const std::vector<std::shared_ptr<Kernel::SynchronizationObject>>& object_list;
     bool wait_all;
 };
 
@@ -149,14 +150,14 @@ public:
 class WaitTreeThreadList : public WaitTreeExpandableItem {
     Q_OBJECT
 public:
-    explicit WaitTreeThreadList(const std::vector<Kernel::Thread*>& list);
+    explicit WaitTreeThreadList(const std::vector<std::shared_ptr<Kernel::Thread>>& list);
     ~WaitTreeThreadList() override;
 
     QString GetText() const override;
     std::vector<std::unique_ptr<WaitTreeItem>> GetChildren() const override;
 
 private:
-    const std::vector<Kernel::Thread*>& thread_list;
+    const std::vector<std::shared_ptr<Kernel::Thread>>& thread_list;
 };
 
 class WaitTreeModel : public QAbstractItemModel {

@@ -15,8 +15,10 @@
 #include "video_core/shader/shader_ir.h"
 
 namespace Vulkan {
+class VKDevice;
+}
 
-class Device;
+namespace Vulkan {
 
 using Maxwell = Tegra::Engines::Maxwell3D::Regs;
 using UniformTexelEntry = VideoCommon::Shader::SamplerEntry;
@@ -107,7 +109,7 @@ struct SPIRVShader {
 
 ShaderEntries GenerateShaderEntries(const VideoCommon::Shader::ShaderIR& ir);
 
-std::vector<u32> Decompile(const Device& device, const VideoCommon::Shader::ShaderIR& ir,
+std::vector<u32> Decompile(const VKDevice& device, const VideoCommon::Shader::ShaderIR& ir,
                            Tegra::Engines::ShaderType stage,
                            const VideoCommon::Shader::Registry& registry,
                            const Specialization& specialization);

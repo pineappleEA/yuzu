@@ -7,11 +7,11 @@
 #include <vector>
 
 #include "video_core/renderer_vulkan/vk_resource_pool.h"
-#include "video_core/vulkan_common/vulkan_wrapper.h"
+#include "video_core/renderer_vulkan/wrapper.h"
 
 namespace Vulkan {
 
-class Device;
+class VKDevice;
 class VKDescriptorPool;
 class VKScheduler;
 
@@ -39,7 +39,7 @@ class VKDescriptorPool final {
     friend DescriptorAllocator;
 
 public:
-    explicit VKDescriptorPool(const Device& device, VKScheduler& scheduler);
+    explicit VKDescriptorPool(const VKDevice& device, VKScheduler& scheduler);
     ~VKDescriptorPool();
 
     VKDescriptorPool(const VKDescriptorPool&) = delete;
@@ -50,7 +50,7 @@ private:
 
     vk::DescriptorSets AllocateDescriptors(VkDescriptorSetLayout layout, std::size_t count);
 
-    const Device& device;
+    const VKDevice& device;
     MasterSemaphore& master_semaphore;
 
     std::vector<vk::DescriptorPool> pools;

@@ -18,10 +18,12 @@ TimeManager::TimeManager(Core::System& system_) : system{system_} {
     time_manager_event_type = Core::Timing::CreateEvent(
         "Kernel::TimeManagerCallback",
         [this](std::uintptr_t thread_handle, std::chrono::nanoseconds) {
+            const KScopedSchedulerLock lock(system.Kernel());
+            const auto proper_handle = static_cast<Handle>(thread_handle);
+
             std::shared_ptr<Thread> thread;
             {
                 std::lock_guard lock{mutex};
-                const auto proper_handle = static_cast<Handle>(thread_handle);
                 if (cancelled_events[proper_handle]) {
                     return;
                 }
@@ -30,7 +32,7 @@ TimeManager::TimeManager(Core::System& system_) : system{system_} {
 
             if (thread) {
                 // Thread can be null if process has exited
-                thread->Wakeup();
+                thread->OnWakeUp();
             }
         });
 }
@@ -40,7 +42,8 @@ void TimeManager::ScheduleTimeEvent(Handle& event_handle, Thread* timetask, s64 
     event_handle = timetask->GetGlobalHandle();
     if (nanoseconds > 0) {
         ASSERT(timetask);
-        ASSERT(timetask->GetState() != ThreadState::Runnable);
+        ASSERT(timetask->GetStatus() != ThreadStatus::Ready);
+        ASSERT(timetask->GetStatus() != ThreadStatus::WaitMutex);
         system.CoreTiming().ScheduleEvent(std::chrono::nanoseconds{nanoseconds},
                                           time_manager_event_type, event_handle);
     } else {

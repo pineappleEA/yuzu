@@ -26,10 +26,9 @@ using CPUInterrupts = std::array<CPUInterruptHandler, Core::Hardware::NUM_CPU_CO
 /// Generic ARMv8 CPU interface
 class ARM_Interface : NonCopyable {
 public:
-    explicit ARM_Interface(System& system_, CPUInterrupts& interrupt_handlers_,
-                           bool uses_wall_clock_)
-        : system{system_}, interrupt_handlers{interrupt_handlers_}, uses_wall_clock{
-                                                                        uses_wall_clock_} {}
+    explicit ARM_Interface(System& system_, CPUInterrupts& interrupt_handlers, bool uses_wall_clock)
+        : system{system_}, interrupt_handlers{interrupt_handlers}, uses_wall_clock{
+                                                                       uses_wall_clock} {}
     virtual ~ARM_Interface() = default;
 
     struct ThreadContext32 {

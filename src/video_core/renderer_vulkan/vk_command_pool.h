@@ -8,16 +8,16 @@
 #include <vector>
 
 #include "video_core/renderer_vulkan/vk_resource_pool.h"
-#include "video_core/vulkan_common/vulkan_wrapper.h"
+#include "video_core/renderer_vulkan/wrapper.h"
 
 namespace Vulkan {
 
-class Device;
 class MasterSemaphore;
+class VKDevice;
 
 class CommandPool final : public ResourcePool {
 public:
-    explicit CommandPool(MasterSemaphore& master_semaphore_, const Device& device_);
+    explicit CommandPool(MasterSemaphore& master_semaphore_, const VKDevice& device_);
     ~CommandPool() override;
 
     void Allocate(size_t begin, size_t end) override;
@@ -27,7 +27,7 @@ public:
 private:
     struct Pool;
 
-    const Device& device;
+    const VKDevice& device;
     std::vector<Pool> pools;
 };
 

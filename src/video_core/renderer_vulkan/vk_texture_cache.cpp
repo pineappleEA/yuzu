@@ -10,13 +10,11 @@
 #include "video_core/engines/fermi_2d.h"
 #include "video_core/renderer_vulkan/blit_image.h"
 #include "video_core/renderer_vulkan/maxwell_to_vk.h"
-#include "video_core/renderer_vulkan/vk_memory_manager.h"
-#include "video_core/renderer_vulkan/vk_rasterizer.h"
+#include "video_core/renderer_vulkan/vk_device.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
 #include "video_core/renderer_vulkan/vk_staging_buffer_pool.h"
 #include "video_core/renderer_vulkan/vk_texture_cache.h"
-#include "video_core/vulkan_common/vulkan_device.h"
-#include "video_core/vulkan_common/vulkan_wrapper.h"
+#include "video_core/renderer_vulkan/wrapper.h"
 
 namespace Vulkan {
 
@@ -95,7 +93,7 @@ constexpr VkBorderColor ConvertBorderColor(const std::array<float, 4>& color) {
     }
 }
 
-[[nodiscard]] VkImageCreateInfo MakeImageCreateInfo(const Device& device, const ImageInfo& info) {
+[[nodiscard]] VkImageCreateInfo MakeImageCreateInfo(const VKDevice& device, const ImageInfo& info) {
     const auto format_info = MaxwellToVK::SurfaceFormat(device, FormatType::Optimal, info.format);
     VkImageCreateFlags flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     if (info.type == ImageType::e2D && info.resources.layers >= 6 &&
@@ -148,14 +146,14 @@ constexpr VkBorderColor ConvertBorderColor(const std::array<float, 4>& color) {
     };
 }
 
-[[nodiscard]] vk::Image MakeImage(const Device& device, const ImageInfo& info) {
+[[nodiscard]] vk::Image MakeImage(const VKDevice& device, const ImageInfo& info) {
     if (info.type == ImageType::Buffer) {
         return vk::Image{};
     }
     return device.GetLogical().CreateImage(MakeImageCreateInfo(device, info));
 }
 
-[[nodiscard]] vk::Buffer MakeBuffer(const Device& device, const ImageInfo& info) {
+[[nodiscard]] vk::Buffer MakeBuffer(const VKDevice& device, const ImageInfo& info) {
     if (info.type != ImageType::Buffer) {
         return vk::Buffer{};
     }
@@ -207,7 +205,7 @@ constexpr VkBorderColor ConvertBorderColor(const std::array<float, 4>& color) {
     }
 }
 
-[[nodiscard]] VkAttachmentDescription AttachmentDescription(const Device& device,
+[[nodiscard]] VkAttachmentDescription AttachmentDescription(const VKDevice& device,
                                                             const ImageView* image_view) {
     const auto pixel_format = image_view->format;
     return VkAttachmentDescription{

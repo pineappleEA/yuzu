@@ -8,18 +8,19 @@
 
 #include "video_core/engines/fermi_2d.h"
 #include "video_core/renderer_vulkan/vk_descriptor_pool.h"
+#include "video_core/renderer_vulkan/wrapper.h"
 #include "video_core/texture_cache/types.h"
-#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Vulkan {
 
 using VideoCommon::Offset2D;
 
-class Device;
+class VKDevice;
+class VKScheduler;
+class StateTracker;
+
 class Framebuffer;
 class ImageView;
-class StateTracker;
-class VKScheduler;
 
 struct BlitImagePipelineKey {
     constexpr auto operator<=>(const BlitImagePipelineKey&) const noexcept = default;
@@ -30,7 +31,7 @@ struct BlitImagePipelineKey {
 
 class BlitImageHelper {
 public:
-    explicit BlitImageHelper(const Device& device, VKScheduler& scheduler,
+    explicit BlitImageHelper(const VKDevice& device, VKScheduler& scheduler,
                              StateTracker& state_tracker, VKDescriptorPool& descriptor_pool);
     ~BlitImageHelper();
 
@@ -66,7 +67,7 @@ private:
 
     void ConvertColorToDepthPipeline(vk::Pipeline& pipeline, VkRenderPass renderpass);
 
-    const Device& device;
+    const VKDevice& device;
     VKScheduler& scheduler;
     StateTracker& state_tracker;
 
